@@ -108,6 +108,7 @@ func cuuemHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			ChatID: update.Message.Chat.ID,
 			Text:   "Em " + update.Message.From.FirstName + " " + update.Message.From.LastName + " ơi, giờ lên đò là từ 10h đến 10h30 em nhé, đi sớm thì bị bỏ rơi mà đi muộn thì lỡ chuyến đò, căn đúng giờ em nhé!",
 		})
+		return
 	}
 
 	mu.Lock()
@@ -220,6 +221,7 @@ func hogiaHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			ChatID: update.Message.Chat.ID,
 			Text:   "Em " + update.Message.From.FirstName + " " + update.Message.From.LastName + " ơi, giờ lên đò là từ 10h đến 10h30 em nhé, đi sớm thì bị bỏ rơi mà đi muộn thì lỡ chuyến đò, căn đúng giờ em nhé!",
 		})
+		return
 	}
 
 	mu.Lock()
