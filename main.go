@@ -21,7 +21,7 @@ var (
 	mu           sync.Mutex
 	users        = make(map[int64]map[int64]string) // Map to store user names
 	pendingHogia = make(map[int64]map[int64]bool)
-	numberHogia  = make(map[int64]map[int64]int)
+	numberHogia  = make(map[int64]map[int64]int) // ??????????????
 )
 
 func main() {
