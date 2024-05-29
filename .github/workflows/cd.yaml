@@ -64,7 +64,7 @@ jobs:
           echo "$new_version" > VERSION
 
           # Set the new version as an output variable
-          echo "::set-output name=new_version::$new_version"
+          echo "new_version=$new_version" >> $GITHUB_OUTPUT
 
       - name: Commit new version
         run: |
