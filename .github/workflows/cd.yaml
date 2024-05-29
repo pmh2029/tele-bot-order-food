@@ -1,4 +1,4 @@
-name: push-ci
+name: cd
 
 on:
   push:
@@ -9,7 +9,6 @@ on:
 
 jobs:
   build:
-    if: "!contains(github.event.head_commit.message, 'Merge pull request')"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
