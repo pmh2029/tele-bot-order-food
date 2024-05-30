@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"strconv"
@@ -27,14 +28,34 @@ var (
 	traChieuCount   = make(map[int64]int)
 	pendingTraChieu = make(map[int64]map[int64]bool)
 	numberTraChieu  = make(map[int64]map[int64]int) //
+	userVote        = make(map[string][]UserOrder)
+	orderPoll       = make(map[int64]string)
 )
+
+var thucdon = map[int]string{
+	1: "Bún Riêu Út Phương",
+	2: "Bánh cuốn Cao Bằng Tống Thêm",
+	3: "Bún bò Huế An Cựu",
+	4: "Nem nướng Minh Đức",
+	5: "Miến/ Bánh đa trộn Cây Xoài",
+	6: "Cơm thố Anh Nguyễn",
+	7: "Cơm thố Bách Khoa",
+	8: "Bánh mỳ Vũ",
+	9: "Bún đậu mắm tôm",
+}
+
+type UserOrder struct {
+	UserID   int64
+	Fullname string
+	OptionID int
+}
 
 func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
 	opts := []bot.Option{
-		// bot.WithDefaultHandler(defaultHandler),
+		bot.WithDefaultHandler(defaultHandler2),
 		bot.WithDebug(),
 	}
 
@@ -52,6 +73,8 @@ func main() {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/khachmoi", bot.MatchTypePrefix, hogiaHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/trachieu", bot.MatchTypePrefix, traChieuTime)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/tinhtrachieu", bot.MatchTypePrefix, countTraChieu)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/order", bot.MatchTypePrefix, orderHandler)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/chotdon", bot.MatchTypePrefix, chotDon)
 	b.RegisterHandlerMatchFunc(func(update *models.Update) bool {
 		return pendingHogia[update.Message.Chat.ID][update.Message.From.ID] || pendingTraChieu[update.Message.Chat.ID][update.Message.From.ID]
 	}, messageHandler)
@@ -81,6 +104,14 @@ func main() {
 			{
 				Command:     "/tinhtrachieu",
 				Description: "Cú pháp xem danh sách đò viên trà chiều",
+			},
+			{
+				Command:     "/order",
+				Description: "Cú pháp gọi món",
+			},
+			{
+				Command:     "/chotdon",
+				Description: "Cú pháp xem chốt đơn",
 			},
 		},
 	})
@@ -262,6 +293,7 @@ func countCuuemHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		ChatID: update.Message.Chat.ID,
 		Text:   message,
 	})
+
 }
 
 func countTraChieu(ctx context.Context, b *bot.Bot, update *models.Update) {
@@ -403,9 +435,56 @@ func messageHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			})
 
 			// Clear the pending state for the user
-
 		}
 	}
+}
+
+func orderHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if _, ok := orderPoll[update.Message.Chat.ID]; ok {
+		b.SendMessage(ctx, &bot.SendMessageParams{
+			ChatID: update.Message.Chat.ID,
+			Text:   "Trâu chậm thì uống nước đục thôi em " + update.Message.From.FirstName + " " + update.Message.From.LastName + " nhé!",
+		})
+		return
+	}
+
+	msg, _ := b.SendPoll(ctx, &bot.SendPollParams{
+		ChatID:   update.Message.Chat.ID,
+		Question: "Chuyến đò trưa hôm nay hân hạnh được phục vụ các em những món sau:",
+		Options: []models.InputPollOption{
+			{
+				Text: "Bún Riêu Út Phương",
+				// TextEntities: []models.MessageEntity{},
+			},
+			{
+				Text: "Bánh cuốn Cao Bằng Tống Thêm",
+			},
+			{
+				Text: "Bún bò Huế An Cựu",
+			},
+			{
+				Text: "Nem nướng Minh Đức",
+			},
+			{
+				Text: "Miến/ Bánh đa trộn Cây Xoài",
+			},
+			{
+				Text: "Cơm thố Anh Nguyễn",
+			},
+			{
+				Text: "Cơm thố Bách Khoa",
+			},
+			{
+				Text: "Bánh mỳ Vũ",
+			},
+			{
+				Text: "Bún đậu mắm tôm",
+			},
+		},
+		IsAnonymous: bot.False(),
+	})
+
+	orderPoll[update.Message.Chat.ID] = msg.Poll.ID
 }
 
 func isAllowedTime() bool {
@@ -437,4 +516,94 @@ func traChieuTime(ctx context.Context, b *bot.Bot, update *models.Update) {
 		ChatID: update.Message.Chat.ID,
 		Text:   "Trà chiều hôm nay có những ai nèo?",
 	})
+}
+
+func defaultHandler2(ctx context.Context, b *bot.Bot, update *models.Update) {
+	if update.PollAnswer != nil {
+		handlePollAnswer(update)
+	}
+}
+
+func handlePollAnswer(update *models.Update) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	answer := update.PollAnswer
+	if len(answer.OptionIDs) == 0 {
+		return
+	}
+	userID := answer.User.ID
+	fullName := answer.User.FirstName + " " + answer.User.LastName
+	userOrder := UserOrder{
+		UserID:   userID,
+		Fullname: fullName,
+		OptionID: answer.OptionIDs[0],
+	}
+
+	if userVote[answer.PollID] == nil {
+		userVote[answer.PollID] = make([]UserOrder, 0)
+	}
+
+	// Check if the user has already voted and remove their previous vote
+	if previousResponse, exists := userVote[answer.PollID]; exists {
+		for _, prevOptionID := range previousResponse {
+			// Remove the user from the previous option
+			 = removeUser(optionToUsers[prevOptionID], userName)
+		}
+	}
+	userVote[answer.PollID] = append(userVote[answer.PollID], userOrder)
+}
+
+func chotDon(ctx context.Context, b *bot.Bot, update *models.Update) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	optionToUsers := make(map[int][]string)
+
+	for _, userOrder := range userVote[orderPoll[update.Message.Chat.ID]] {
+		optionToUsers[userOrder.OptionID] = append(optionToUsers[userOrder.OptionID], userOrder.Fullname)
+	}
+
+	totalVote := len(userVote[orderPoll[update.Message.Chat.ID]])
+	maxVotes := 0
+
+	for _, user := range optionToUsers {
+		if len(user) > maxVotes {
+			maxVotes = len(user)
+		}
+	}
+
+	var mostVotedOptions []int
+	var resultMessage string
+	resultMessage = "Các em hơi nhiều yêu cầu đấy nhé:\n"
+	for optionID, users := range optionToUsers {
+		percentage := (float64(len(users)) / float64(totalVote)) * 100
+		resultMessage += fmt.Sprintf("- %s (%.2f%%):\n", thucdon[optionID+1], percentage)
+		for _, user := range users {
+			resultMessage += fmt.Sprintf("  * %s\n", user)
+		}
+		if len(users) == maxVotes {
+			mostVotedOptions = append(mostVotedOptions, optionID)
+		}
+	}
+
+	resultMessage += fmt.Sprintf("\nĐò trưa nay chia %d thuyền các em nhé:\n", len(mostVotedOptions))
+	for optionID, users := range optionToUsers {
+		if len(users) == maxVotes {
+			resultMessage += fmt.Sprintf("- Thuyền %s:\n", thucdon[optionID+1])
+			for _, user := range users {
+				resultMessage += fmt.Sprintf("  * %s\n", user)
+			}
+			resultMessage += "\n"
+		}
+	}
+
+	msg := &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   resultMessage,
+	}
+	_, err := b.SendMessage(ctx, msg)
+	if err != nil {
+		log.Printf("Error sending message: %v", err)
+	}
 }
