@@ -521,12 +521,16 @@ func traChieuTime(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 func defaultHandler2(ctx context.Context, b *bot.Bot, update *models.Update) {
+	chatID, err := strconv.ParseInt(os.Getenv("CHAT_ID"), 10, 64)
+	if err != nil {
+		return
+	}
 	if update.PollAnswer != nil {
-		handlePollAnswer(update)
+		handlePollAnswer(update, chatID)
 	}
 }
 
-func handlePollAnswer(update *models.Update) {
+func handlePollAnswer(update *models.Update, chatID int64) {
 	mu.Lock()
 	defer mu.Unlock()
 
@@ -537,22 +541,22 @@ func handlePollAnswer(update *models.Update) {
 	userID := answer.User.ID
 	fullName := answer.User.FirstName + " " + answer.User.LastName
 
-	if userVote[update.Message.Chat.ID] == nil {
-		userVote[update.Message.Chat.ID] = make(map[string][]UserOrder)
+	if userVote[chatID] == nil {
+		userVote[chatID] = make(map[string][]UserOrder)
 	}
 
-	if userVote[update.Message.Chat.ID][answer.PollID] == nil {
-		userVote[update.Message.Chat.ID][answer.PollID] = make([]UserOrder, 0)
+	if userVote[chatID][answer.PollID] == nil {
+		userVote[chatID][answer.PollID] = make([]UserOrder, 0)
 	}
-	if optionToUsers[update.Message.Chat.ID] == nil {
-		optionToUsers[update.Message.Chat.ID] = make(map[int][]string)
+	if optionToUsers[chatID] == nil {
+		optionToUsers[chatID] = make(map[int][]string)
 	}
 
 	// Check if the user has already voted and remove their previous vote
-	if previousResponse, exists := userVote[update.Message.Chat.ID][answer.PollID]; exists {
+	if previousResponse, exists := userVote[chatID][answer.PollID]; exists {
 		for _, prevOptionID := range previousResponse {
 			// Remove the user from the previous option
-			optionToUsers[update.Message.Chat.ID][prevOptionID.OptionID] = removeUser(optionToUsers[update.Message.Chat.ID][prevOptionID.OptionID], fullName)
+			optionToUsers[chatID][prevOptionID.OptionID] = removeUser(optionToUsers[chatID][prevOptionID.OptionID], fullName)
 		}
 	}
 
@@ -564,11 +568,11 @@ func handlePollAnswer(update *models.Update) {
 
 	if len(answer.OptionIDs) > 0 {
 
-		optionToUsers[update.Message.Chat.ID][answer.OptionIDs[0]] = append(optionToUsers[update.Message.Chat.ID][answer.OptionIDs[0]], fullName)
+		optionToUsers[chatID][answer.OptionIDs[0]] = append(optionToUsers[chatID][answer.OptionIDs[0]], fullName)
 		found := false
-		for i, v := range userVote[update.Message.Chat.ID][answer.PollID] {
+		for i, v := range userVote[chatID][answer.PollID] {
 			if v.UserID == userID {
-				userVote[update.Message.Chat.ID][answer.PollID][i].OptionID = answer.OptionIDs[0]
+				userVote[chatID][answer.PollID][i].OptionID = answer.OptionIDs[0]
 				found = true
 				break
 			}
@@ -576,13 +580,13 @@ func handlePollAnswer(update *models.Update) {
 
 		// Nếu không tìm thấy userID, thêm mới vào userVote
 		if !found {
-			userVote[update.Message.Chat.ID][answer.PollID] = append(userVote[update.Message.Chat.ID][answer.PollID], userOrder)
+			userVote[chatID][answer.PollID] = append(userVote[chatID][answer.PollID], userOrder)
 		}
 	} else {
 		// If no options selected, remove the user response
-		for _, v := range userVote[update.Message.Chat.ID][answer.PollID] {
+		for _, v := range userVote[chatID][answer.PollID] {
 			if v.UserID == userID {
-				userVote[update.Message.Chat.ID][answer.PollID] = removeOrderByUserID(userVote[update.Message.Chat.ID][answer.PollID], userID)
+				userVote[chatID][answer.PollID] = removeOrderByUserID(userVote[chatID][answer.PollID], userID)
 				break
 			}
 		}
