@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -30,6 +31,7 @@ var (
 	numberTraChieu  = make(map[int64]map[int64]int) //
 	userVote        = make(map[string][]UserOrder)
 	orderPoll       = make(map[int64]string)
+	optionToUsers   = make(map[int][]string)
 )
 
 var thucdon = map[int]string{
@@ -534,11 +536,6 @@ func handlePollAnswer(update *models.Update) {
 	}
 	userID := answer.User.ID
 	fullName := answer.User.FirstName + " " + answer.User.LastName
-	userOrder := UserOrder{
-		UserID:   userID,
-		Fullname: fullName,
-		OptionID: answer.OptionIDs[0],
-	}
 
 	if userVote[answer.PollID] == nil {
 		userVote[answer.PollID] = make([]UserOrder, 0)
@@ -548,21 +545,70 @@ func handlePollAnswer(update *models.Update) {
 	if previousResponse, exists := userVote[answer.PollID]; exists {
 		for _, prevOptionID := range previousResponse {
 			// Remove the user from the previous option
-			 = removeUser(optionToUsers[prevOptionID], userName)
+			optionToUsers[prevOptionID.OptionID] = removeUser(optionToUsers[prevOptionID.OptionID], fullName)
 		}
 	}
-	userVote[answer.PollID] = append(userVote[answer.PollID], userOrder)
+
+	userOrder := UserOrder{
+		UserID:   userID,
+		Fullname: fullName,
+		OptionID: answer.OptionIDs[0],
+	}
+
+	if len(answer.OptionIDs) > 0 {
+
+		optionToUsers[answer.OptionIDs[0]] = append(optionToUsers[answer.OptionIDs[0]], fullName)
+		found := false
+		for i, v := range userVote[answer.PollID] {
+			if v.UserID == userID {
+				userVote[answer.PollID][i].OptionID = answer.OptionIDs[0]
+				found = true
+				break
+			}
+		}
+
+		// Nếu không tìm thấy userID, thêm mới vào userVote
+		if !found {
+			userVote[answer.PollID] = append(userVote[answer.PollID], userOrder)
+		}
+	} else {
+		// If no options selected, remove the user response
+		for _, v := range userVote[answer.PollID] {
+			if v.UserID == userID {
+				userVote[answer.PollID] = removeOrderByUserID(userVote[answer.PollID], userID)
+				break
+			}
+		}
+	}
+}
+
+func removeOrderByUserID(orders []UserOrder, userID int64) []UserOrder {
+	for i, order := range orders {
+		if order.UserID == userID {
+			// Loại bỏ phần tử tại vị trí i
+			return append(orders[:i], orders[i+1:]...)
+		}
+	}
+	// Nếu không tìm thấy UserID, trả về mảng gốc
+	return orders
+}
+
+func removeUser(userList []string, userName string) []string {
+	for i, user := range userList {
+		if user == userName {
+			return append(userList[:i], userList[i+1:]...)
+		}
+	}
+	return userList
 }
 
 func chotDon(ctx context.Context, b *bot.Bot, update *models.Update) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	optionToUsers := make(map[int][]string)
-
-	for _, userOrder := range userVote[orderPoll[update.Message.Chat.ID]] {
-		optionToUsers[userOrder.OptionID] = append(optionToUsers[userOrder.OptionID], userOrder.Fullname)
-	}
+	// for _, userOrder := range userVote[orderPoll[update.Message.Chat.ID]] {
+	// 	optionToUsers[userOrder.OptionID] = append(optionToUsers[userOrder.OptionID], userOrder.Fullname)
+	// }
 
 	totalVote := len(userVote[orderPoll[update.Message.Chat.ID]])
 	maxVotes := 0
@@ -577,13 +623,15 @@ func chotDon(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var resultMessage string
 	resultMessage = "Các em hơi nhiều yêu cầu đấy nhé:\n"
 	for optionID, users := range optionToUsers {
-		percentage := (float64(len(users)) / float64(totalVote)) * 100
-		resultMessage += fmt.Sprintf("- %s (%.2f%%):\n", thucdon[optionID+1], percentage)
-		for _, user := range users {
-			resultMessage += fmt.Sprintf("  * %s\n", user)
-		}
-		if len(users) == maxVotes {
-			mostVotedOptions = append(mostVotedOptions, optionID)
+		if len(users) > 0 {
+			percentage := (float64(len(users)) / float64(totalVote)) * 100
+			resultMessage += fmt.Sprintf("- %s (%.2f%%):\n", thucdon[optionID+1], percentage)
+			for _, user := range users {
+				resultMessage += fmt.Sprintf("  * %s\n", user)
+			}
+			if len(users) == maxVotes {
+				mostVotedOptions = append(mostVotedOptions, optionID)
+			}
 		}
 	}
 
@@ -596,6 +644,22 @@ func chotDon(ctx context.Context, b *bot.Bot, update *models.Update) {
 			}
 			resultMessage += "\n"
 		}
+	}
+	var selectedOptionIDs []int
+	for _, userOrder := range userVote[orderPoll[update.Message.Chat.ID]] {
+		selectedOptionIDs = append(selectedOptionIDs, userOrder.OptionID)
+	}
+	if !slices.Equal(mostVotedOptions, selectedOptionIDs) {
+		resultMessage += "Các em "
+		for i, userOrder := range userVote[orderPoll[update.Message.Chat.ID]] {
+			if !slices.Contains(mostVotedOptions, userOrder.OptionID) {
+				resultMessage += userOrder.Fullname
+				if len(userVote[orderPoll[update.Message.Chat.ID]]) > 1 && i < len(userVote[orderPoll[update.Message.Chat.ID]])-1 {
+					resultMessage += ", "
+				}
+			}
+		}
+		resultMessage += " chọn lại thuyền cho mình các em nhé!"
 	}
 
 	msg := &bot.SendMessageParams{
