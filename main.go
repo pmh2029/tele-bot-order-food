@@ -29,9 +29,9 @@ var (
 	traChieuCount   = make(map[int64]int)
 	pendingTraChieu = make(map[int64]map[int64]bool)
 	numberTraChieu  = make(map[int64]map[int64]int) //
-	userVote        = make(map[string][]UserOrder)
+	userVote        = make(map[int64]map[string][]UserOrder)
 	orderPoll       = make(map[int64]string)
-	optionToUsers   = make(map[int][]string)
+	optionToUsers   = make(map[int64]map[int][]string)
 )
 
 var thucdon = map[int]string{
@@ -537,15 +537,22 @@ func handlePollAnswer(update *models.Update) {
 	userID := answer.User.ID
 	fullName := answer.User.FirstName + " " + answer.User.LastName
 
-	if userVote[answer.PollID] == nil {
-		userVote[answer.PollID] = make([]UserOrder, 0)
+	if userVote[update.Message.Chat.ID] == nil {
+		userVote[update.Message.Chat.ID] = make(map[string][]UserOrder)
+	}
+
+	if userVote[update.Message.Chat.ID][answer.PollID] == nil {
+		userVote[update.Message.Chat.ID][answer.PollID] = make([]UserOrder, 0)
+	}
+	if optionToUsers[update.Message.Chat.ID] == nil {
+		optionToUsers[update.Message.Chat.ID] = make(map[int][]string)
 	}
 
 	// Check if the user has already voted and remove their previous vote
-	if previousResponse, exists := userVote[answer.PollID]; exists {
+	if previousResponse, exists := userVote[update.Message.Chat.ID][answer.PollID]; exists {
 		for _, prevOptionID := range previousResponse {
 			// Remove the user from the previous option
-			optionToUsers[prevOptionID.OptionID] = removeUser(optionToUsers[prevOptionID.OptionID], fullName)
+			optionToUsers[update.Message.Chat.ID][prevOptionID.OptionID] = removeUser(optionToUsers[update.Message.Chat.ID][prevOptionID.OptionID], fullName)
 		}
 	}
 
@@ -557,11 +564,11 @@ func handlePollAnswer(update *models.Update) {
 
 	if len(answer.OptionIDs) > 0 {
 
-		optionToUsers[answer.OptionIDs[0]] = append(optionToUsers[answer.OptionIDs[0]], fullName)
+		optionToUsers[update.Message.Chat.ID][answer.OptionIDs[0]] = append(optionToUsers[update.Message.Chat.ID][answer.OptionIDs[0]], fullName)
 		found := false
-		for i, v := range userVote[answer.PollID] {
+		for i, v := range userVote[update.Message.Chat.ID][answer.PollID] {
 			if v.UserID == userID {
-				userVote[answer.PollID][i].OptionID = answer.OptionIDs[0]
+				userVote[update.Message.Chat.ID][answer.PollID][i].OptionID = answer.OptionIDs[0]
 				found = true
 				break
 			}
@@ -569,13 +576,13 @@ func handlePollAnswer(update *models.Update) {
 
 		// Nếu không tìm thấy userID, thêm mới vào userVote
 		if !found {
-			userVote[answer.PollID] = append(userVote[answer.PollID], userOrder)
+			userVote[update.Message.Chat.ID][answer.PollID] = append(userVote[update.Message.Chat.ID][answer.PollID], userOrder)
 		}
 	} else {
 		// If no options selected, remove the user response
-		for _, v := range userVote[answer.PollID] {
+		for _, v := range userVote[update.Message.Chat.ID][answer.PollID] {
 			if v.UserID == userID {
-				userVote[answer.PollID] = removeOrderByUserID(userVote[answer.PollID], userID)
+				userVote[update.Message.Chat.ID][answer.PollID] = removeOrderByUserID(userVote[update.Message.Chat.ID][answer.PollID], userID)
 				break
 			}
 		}
@@ -610,7 +617,7 @@ func chotDon(ctx context.Context, b *bot.Bot, update *models.Update) {
 	// 	optionToUsers[userOrder.OptionID] = append(optionToUsers[userOrder.OptionID], userOrder.Fullname)
 	// }
 
-	totalVote := len(userVote[orderPoll[update.Message.Chat.ID]])
+	totalVote := len(userVote[update.Message.Chat.ID][orderPoll[update.Message.Chat.ID]])
 	maxVotes := 0
 
 	for _, user := range optionToUsers {
@@ -622,7 +629,7 @@ func chotDon(ctx context.Context, b *bot.Bot, update *models.Update) {
 	var mostVotedOptions []int
 	var resultMessage string
 	resultMessage = "Các em hơi nhiều yêu cầu đấy nhé:\n"
-	for optionID, users := range optionToUsers {
+	for optionID, users := range optionToUsers[update.Message.Chat.ID] {
 		if len(users) > 0 {
 			percentage := (float64(len(users)) / float64(totalVote)) * 100
 			resultMessage += fmt.Sprintf("- %s (%.2f%%):\n", thucdon[optionID+1], percentage)
@@ -636,7 +643,7 @@ func chotDon(ctx context.Context, b *bot.Bot, update *models.Update) {
 	}
 
 	resultMessage += fmt.Sprintf("\nĐò trưa nay chia %d thuyền các em nhé:\n", len(mostVotedOptions))
-	for optionID, users := range optionToUsers {
+	for optionID, users := range optionToUsers[update.Message.Chat.ID] {
 		if len(users) == maxVotes {
 			resultMessage += fmt.Sprintf("- Thuyền %s:\n", thucdon[optionID+1])
 			for _, user := range users {
@@ -646,15 +653,15 @@ func chotDon(ctx context.Context, b *bot.Bot, update *models.Update) {
 		}
 	}
 	var selectedOptionIDs []int
-	for _, userOrder := range userVote[orderPoll[update.Message.Chat.ID]] {
+	for _, userOrder := range userVote[update.Message.Chat.ID][orderPoll[update.Message.Chat.ID]] {
 		selectedOptionIDs = append(selectedOptionIDs, userOrder.OptionID)
 	}
 	if !slices.Equal(mostVotedOptions, selectedOptionIDs) {
 		resultMessage += "Các em "
-		for i, userOrder := range userVote[orderPoll[update.Message.Chat.ID]] {
+		for i, userOrder := range userVote[update.Message.Chat.ID][orderPoll[update.Message.Chat.ID]] {
 			if !slices.Contains(mostVotedOptions, userOrder.OptionID) {
 				resultMessage += userOrder.Fullname
-				if len(userVote[orderPoll[update.Message.Chat.ID]]) > 1 && i < len(userVote[orderPoll[update.Message.Chat.ID]])-1 {
+				if len(userVote[update.Message.Chat.ID][orderPoll[update.Message.Chat.ID]]) > 1 && i < len(userVote[update.Message.Chat.ID][orderPoll[update.Message.Chat.ID]])-1 {
 					resultMessage += ", "
 				}
 			}
