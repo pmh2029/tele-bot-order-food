@@ -121,7 +121,7 @@ func main() {
 
 	c := cron.New()
 
-	c.AddFunc("15 10 * * *", func() {
+	c.AddFunc("0 10 * * *", func() {
 		orderJobHandler(ctx, b, os.Getenv("CHAT_ID"))
 	})
 
@@ -681,4 +681,11 @@ func chotDon(ctx context.Context, b *bot.Bot, update *models.Update) {
 	if err != nil {
 		log.Printf("Error sending message: %v", err)
 	}
+}
+
+func noXau(ctx context.Context, b *bot.Bot, update *models.Update) {
+	b.SendMessage(ctx, &bot.SendMessageParams{
+		ChatID: update.Message.Chat.ID,
+		Text:   "Đào vì mãn em " + update.Message.From.FirstName + " " + update.Message.From.LastName + " nhé!",
+	})
 }
