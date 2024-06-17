@@ -39,24 +39,26 @@ jobs:
           # Split the version into parts
           IFS='.' read -r -a version_parts <<< "$current_version"
 
-          # Increment the patch version
-          if [ "${version_parts[1]}" -eq 9 ] && [ "${version_parts[2]}" -eq 9 ]; then
-              major_version=$((version_parts[0] + 1))
-              new_version="$major_version.0.0"
-          else
-              # Increment the minor version if patch version is 99
-              if [ "${version_parts[2]}" -eq 9 ]; then
-                  minor_version=$((version_parts[1] + 1))
-                  new_version="${version_parts[0]}.$minor_version.0"
+          # Initialize variables for the new version
+          major_version=${version_parts[0]}
+          minor_version=${version_parts[1]}
+          patch_version=${version_parts[2]}
+
+          # Increment the version based on current version parts
+          if [ "$patch_version" -eq 9 ]; then
+              patch_version=0
+              if [ "$minor_version" -eq 9 ]; then
+                  minor_version=0
+                  major_version=$((major_version + 1))
               else
-                  # Increment the patch version
-                  patch_version=$((version_parts[2] + 1))
-                  new_version="${version_parts[0]}.${version_parts[1]}.$patch_version"
+                  minor_version=$((minor_version + 1))
               fi
+          else
+              patch_version=$((patch_version + 1))
           fi
 
           # Form the new version
-          new_version="${version_parts[0]}.${version_parts[1]}.$patch_version"
+          new_version="$major_version.$minor_version.$patch_version"
 
           # Save the new version to the VERSION file
           echo "$new_version" > VERSION
