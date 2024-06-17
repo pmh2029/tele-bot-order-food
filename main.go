@@ -497,7 +497,7 @@ func orderHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 func isAllowedTime() bool {
 	now := time.Now()
 	start := time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, now.Location())
-	end := time.Date(now.Year(), now.Month(), now.Day(), 10, 30, 0, 0, now.Location())
+	end := time.Date(now.Year(), now.Month(), now.Day(), 19, 30, 0, 0, now.Location())
 	return now.After(start) && now.Before(end)
 }
 
@@ -622,14 +622,14 @@ func chotDon(ctx context.Context, b *bot.Bot, update *models.Update) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	for _, userOrder := range userVote[update.Message.Chat.ID][orderPoll[update.Message.Chat.ID]] {
-		optionToUsers[update.Message.Chat.ID][userOrder.OptionID] = append(optionToUsers[update.Message.Chat.ID][userOrder.OptionID], userOrder.Fullname)
-	}
+	// for _, userOrder := range userVote[update.Message.Chat.ID][orderPoll[update.Message.Chat.ID]] {
+	// 	optionToUsers[update.Message.Chat.ID][userOrder.OptionID] = append(optionToUsers[update.Message.Chat.ID][userOrder.OptionID], userOrder.Fullname)
+	// }
 
 	totalVote := len(userVote[update.Message.Chat.ID][orderPoll[update.Message.Chat.ID]])
 	maxVotes := 0
 
-	for _, user := range optionToUsers {
+	for _, user := range optionToUsers[update.Message.Chat.ID] {
 		if len(user) > maxVotes {
 			maxVotes = len(user)
 		}
