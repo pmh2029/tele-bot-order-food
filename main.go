@@ -35,15 +35,16 @@ var (
 )
 
 var thucdon = map[int]string{
-	1: "Bún Riêu Út Phương",
-	2: "Bánh cuốn Cao Bằng Tống Thêm",
-	3: "Bún bò Huế An Cựu",
-	4: "Nem nướng Minh Đức",
-	5: "Miến/ Bánh đa trộn Cây Xoài",
-	6: "Cơm thố Anh Nguyễn",
-	7: "Cơm thố Bách Khoa",
-	8: "Bánh mỳ Vũ",
-	9: "Bún đậu mắm tôm",
+	1:  "Bún Riêu Út Phương",
+	2:  "Bánh cuốn Cao Bằng Tống Thêm",
+	3:  "Bún bò Huế An Cựu",
+	4:  "Nem nướng Minh Đức",
+	5:  "Miến/ Bánh đa trộn Cây Xoài",
+	6:  "Cơm thố Anh Nguyễn",
+	7:  "Cơm thố Bách Khoa",
+	8:  "Bánh mỳ Vũ",
+	9:  "Bún đậu mắm tôm",
+	10: "Cơm gà nhị vị Nam Kinh",
 }
 
 type UserOrder struct {
@@ -77,6 +78,7 @@ func main() {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/tinhtrachieu", bot.MatchTypePrefix, countTraChieu)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/order", bot.MatchTypePrefix, orderHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/chotdon", bot.MatchTypePrefix, chotDon)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/noxau", bot.MatchTypePrefix, noXau)
 	b.RegisterHandlerMatchFunc(func(update *models.Update) bool {
 		return pendingHogia[update.Message.Chat.ID][update.Message.From.ID] || pendingTraChieu[update.Message.Chat.ID][update.Message.From.ID]
 	}, messageHandler)
@@ -482,6 +484,9 @@ func orderHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			{
 				Text: "Bún đậu mắm tôm",
 			},
+			{
+				Text: "Cơm gà nhị vị Nam Kinh",
+			},
 		},
 		IsAnonymous: bot.False(),
 	})
@@ -617,9 +622,9 @@ func chotDon(ctx context.Context, b *bot.Bot, update *models.Update) {
 	mu.Lock()
 	defer mu.Unlock()
 
-	// for _, userOrder := range userVote[orderPoll[update.Message.Chat.ID]] {
-	// 	optionToUsers[userOrder.OptionID] = append(optionToUsers[userOrder.OptionID], userOrder.Fullname)
-	// }
+	for _, userOrder := range userVote[update.Message.Chat.ID][orderPoll[update.Message.Chat.ID]] {
+		optionToUsers[update.Message.Chat.ID][userOrder.OptionID] = append(optionToUsers[update.Message.Chat.ID][userOrder.OptionID], userOrder.Fullname)
+	}
 
 	totalVote := len(userVote[update.Message.Chat.ID][orderPoll[update.Message.Chat.ID]])
 	maxVotes := 0
@@ -684,8 +689,28 @@ func chotDon(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 func noXau(ctx context.Context, b *bot.Bot, update *models.Update) {
-	b.SendMessage(ctx, &bot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   "Đào vì mãn em " + update.Message.From.FirstName + " " + update.Message.From.LastName + " nhé!",
-	})
+	// b.SendMessage(ctx, &bot.SendMessageParams{
+	// 	ChatID: -4175362958,
+	// 	Text:   "Không phải thách ^-^",
+	// })
+
+	// fileData, errReadFile := os.ReadFile("./photo_2024-05-07_14-29-21.png")
+	// if errReadFile != nil {
+	// 	fmt.Printf("error read file, %v\n", errReadFile)
+	// 	return
+	// }
+
+	// params := &bot.SendPhotoParams{
+	// 	ChatID:  -4175362958,
+	// 	Photo:   &models.InputFileUpload{Data: bytes.NewReader(fileData)},
+	// 	Caption: "Thanks for your opinion, I appreciate it!",
+	// }
+
+	// b.SendPhoto(ctx, params)
+
+	// b.BanChatMember(ctx, &bot.BanChatMemberParams{
+	// 	UserID: 939425786,
+	// 	ChatID: -4175362958,
+	// 	RevokeMessages: true,
+	// })
 }
