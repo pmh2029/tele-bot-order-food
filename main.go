@@ -63,7 +63,7 @@ func main() {
 		bot.WithDebug(),
 	}
 
-	b, err := bot.New("7021374994:AAHqS2-YOSeExuDTSn7Ivq-ZSMQLAYcEnfw", opts...)
+	b, err := bot.New(os.Getenv("BOT_TOKEN"), opts...)
 	if err != nil {
 		// panics for the sake of simplicity.
 		// you should handle this error properly in your code.
