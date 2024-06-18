@@ -8,6 +8,7 @@ import (
 	"os/signal"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -675,6 +676,7 @@ func chotDon(ctx context.Context, b *bot.Bot, update *models.Update) {
 				}
 			}
 		}
+		resultMessage = strings.TrimSuffix(resultMessage, ", ")
 		resultMessage += " chọn lại thuyền cho mình các em nhé!"
 	}
 
