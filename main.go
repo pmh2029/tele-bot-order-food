@@ -730,7 +730,7 @@ func noxauhandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 		people, _ := strconv.ParseInt(id, 10, 64)
 		ids = append(ids, people)
 	}
-	if update.Message != nil && slices.Contains(ids, update.Message.From.ID) {
+	if update.Message != nil && slices.Contains(ids, update.Message.From.ID) && update.Message.Chat.ID != -4175362958 {
 		if update.Message.Text != "" {
 			b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: os.Getenv("CHAT_ID"),
