@@ -61,6 +61,7 @@ func main() {
 	opts := []bot.Option{
 		bot.WithDefaultHandler(defaultHandler2),
 		bot.WithDebug(),
+		bot.WithDefaultHandler(noxauhandler),
 	}
 
 	b, err := bot.New(os.Getenv("BOT_TOKEN"), opts...)
@@ -79,7 +80,7 @@ func main() {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/tinhtrachieu", bot.MatchTypePrefix, countTraChieu)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/order", bot.MatchTypePrefix, orderHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/chotdon", bot.MatchTypePrefix, chotDon)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "/noxau", bot.MatchTypePrefix, noXau)
+	b.RegisterHandler(bot.HandlerTypeMessageText, "/noxau", bot.MatchTypePrefix, noxauhandler)
 	b.RegisterHandlerMatchFunc(func(update *models.Update) bool {
 		return pendingHogia[update.Message.Chat.ID][update.Message.From.ID] || pendingTraChieu[update.Message.Chat.ID][update.Message.From.ID]
 	}, messageHandler)
@@ -715,4 +716,36 @@ func noXau(ctx context.Context, b *bot.Bot, update *models.Update) {
 	// 	ChatID: -4175362958,
 	// 	RevokeMessages: true,
 	// })
+}
+
+func noxauhandler(ctx context.Context, b *bot.Bot, update *models.Update) {
+	adminID, err := strconv.ParseInt(os.Getenv("ADMIN"), 10, 64)
+	if err != nil {
+		return
+	}
+	if update.Message != nil && update.Message.From.ID == adminID {
+		if update.Message.Text != "" {
+			b.SendMessage(ctx, &bot.SendMessageParams{
+				ChatID: os.Getenv("CHAT_ID"),
+				Text:   update.Message.Text,
+			})
+		}
+		if update.Message.Sticker != nil {
+			b.SendSticker(ctx, &bot.SendStickerParams{
+				ChatID: os.Getenv("CHAT_ID"),
+				Sticker: &models.InputFileString{
+					Data: update.Message.Sticker.FileID,
+				},
+			})
+		}
+		if update.Message.Photo != nil {
+			b.SendPhoto(ctx, &bot.SendPhotoParams{
+				ChatID: os.Getenv("CHAT_ID"),
+				Photo: &models.InputFileString{
+					Data: update.Message.Photo[0].FileID,
+				},
+			})
+
+		}
+	}
 }

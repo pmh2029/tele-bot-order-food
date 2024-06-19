@@ -1,0 +1,9 @@
+services:
+  tele-bot-order-food:
+    image: ${BOT_IMAGE}
+    container_name: tele-bot-order-food
+    environment:
+      CHAT_ID: ${CHAT_ID}
+      BOT_TOKEN: ${BOT_TOKEN}
+      TZ: "Asia/Ho_Chi_Minh"
+
