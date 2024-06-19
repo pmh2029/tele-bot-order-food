@@ -46,6 +46,7 @@ var thucdon = map[int]string{
 	8:  "Bánh mỳ Vũ",
 	9:  "Bún đậu mắm tôm",
 	10: "Cơm gà nhị vị Nam Kinh",
+	11: "Kim bap",
 }
 
 type UserOrder struct {
@@ -489,6 +490,9 @@ func orderHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 			{
 				Text: "Cơm gà nhị vị Nam Kinh",
 			},
+			{
+				Text: "Kim bap",
+			},
 		},
 		IsAnonymous: bot.False(),
 	})
@@ -719,11 +723,14 @@ func noXau(ctx context.Context, b *bot.Bot, update *models.Update) {
 }
 
 func noxauhandler(ctx context.Context, b *bot.Bot, update *models.Update) {
-	adminID, err := strconv.ParseInt(os.Getenv("ADMIN"), 10, 64)
-	if err != nil {
-		return
+	admin := os.Getenv("ADMIN")
+	adminIDs := strings.Split(admin, ",")
+	ids := []int64{}
+	for _, id := range adminIDs {
+		people, _ := strconv.ParseInt(id, 10, 64)
+		ids = append(ids, people)
 	}
-	if update.Message != nil && update.Message.From.ID == adminID {
+	if update.Message != nil && slices.Contains(ids, update.Message.From.ID) {
 		if update.Message.Text != "" {
 			b.SendMessage(ctx, &bot.SendMessageParams{
 				ChatID: os.Getenv("CHAT_ID"),
