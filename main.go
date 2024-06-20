@@ -62,7 +62,7 @@ func main() {
 	opts := []bot.Option{
 		bot.WithDefaultHandler(defaultHandler2),
 		bot.WithDebug(),
-		bot.WithDefaultHandler(noxauhandler),
+		// bot.WithDefaultHandler(noxauhandler),
 	}
 
 	b, err := bot.New(os.Getenv("BOT_TOKEN"), opts...)
@@ -538,6 +538,39 @@ func defaultHandler2(ctx context.Context, b *bot.Bot, update *models.Update) {
 	}
 	if update.PollAnswer != nil {
 		handlePollAnswer(update, chatID)
+	}
+	admin := os.Getenv("ADMIN")
+	adminIDs := strings.Split(admin, ",")
+	ids := []int64{}
+	for _, id := range adminIDs {
+		people, _ := strconv.ParseInt(id, 10, 64)
+		ids = append(ids, people)
+	}
+	if update.Message != nil {
+		if slices.Contains(ids, update.Message.From.ID) && update.Message.Chat.ID != chatID {
+			if update.Message.Text != "" {
+				b.SendMessage(ctx, &bot.SendMessageParams{
+					ChatID: os.Getenv("CHAT_ID"),
+					Text:   update.Message.Text,
+				})
+			}
+			if update.Message.Sticker != nil {
+				b.SendSticker(ctx, &bot.SendStickerParams{
+					ChatID: os.Getenv("CHAT_ID"),
+					Sticker: &models.InputFileString{
+						Data: update.Message.Sticker.FileID,
+					},
+				})
+			}
+			if update.Message.Photo != nil {
+				b.SendPhoto(ctx, &bot.SendPhotoParams{
+					ChatID: os.Getenv("CHAT_ID"),
+					Photo: &models.InputFileString{
+						Data: update.Message.Photo[0].FileID,
+					},
+				})
+			}
+		}
 	}
 }
 
