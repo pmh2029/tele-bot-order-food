@@ -41,12 +41,11 @@ var thucdon = map[int]string{
 	3:  "Bún bò Huế An Cựu",
 	4:  "Nem nướng Minh Đức",
 	5:  "Miến/ Bánh đa trộn Cây Xoài",
-	6:  "Cơm thố Anh Nguyễn",
-	7:  "Cơm thố Bách Khoa",
-	8:  "Bánh mỳ Vũ",
-	9:  "Bún đậu mắm tôm",
-	10: "Cơm gà nhị vị Nam Kinh",
-	11: "Kim bap",
+	6:  "Cơm thố",
+	7:  "Bánh mỳ Vũ",
+	8:  "Bún đậu mắm tôm",
+	9:  "Cơm gà nhị vị Nam Kinh",
+	10: "Kim bap",
 }
 
 type UserOrder struct {
@@ -81,7 +80,7 @@ func main() {
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/tinhtrachieu", bot.MatchTypePrefix, countTraChieu)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/order", bot.MatchTypePrefix, orderHandler)
 	b.RegisterHandler(bot.HandlerTypeMessageText, "/chotdon", bot.MatchTypePrefix, chotDon)
-	b.RegisterHandler(bot.HandlerTypeMessageText, "/noxau", bot.MatchTypePrefix, noxauhandler)
+	// b.RegisterHandler(bot.HandlerTypeMessageText, "/noxau", bot.MatchTypePrefix, noxauhandler)
 	b.RegisterHandlerMatchFunc(func(update *models.Update) bool {
 		return pendingHogia[update.Message.Chat.ID][update.Message.From.ID] || pendingTraChieu[update.Message.Chat.ID][update.Message.From.ID]
 	}, messageHandler)
@@ -476,10 +475,7 @@ func orderHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 				Text: "Miến/ Bánh đa trộn Cây Xoài",
 			},
 			{
-				Text: "Cơm thố Anh Nguyễn",
-			},
-			{
-				Text: "Cơm thố Bách Khoa",
+				Text: "Cơm thố",
 			},
 			{
 				Text: "Bánh mỳ Vũ",
@@ -546,33 +542,32 @@ func defaultHandler2(ctx context.Context, b *bot.Bot, update *models.Update) {
 		people, _ := strconv.ParseInt(id, 10, 64)
 		ids = append(ids, people)
 	}
-	//		if update.Message != nil {
-	//			if slices.Contains(ids, update.Message.From.ID) && update.Message.Chat.ID != chatID {
-	//				if update.Message.Text != "" {
-	//					b.SendMessage(ctx, &bot.SendMessageParams{
-	//						ChatID: os.Getenv("CHAT_ID"),
-	//						Text:   update.Message.Text,
-	//					})
-	//				}
-	//				if update.Message.Sticker != nil {
-	//					b.SendSticker(ctx, &bot.SendStickerParams{
-	//						ChatID: os.Getenv("CHAT_ID"),
-	//						Sticker: &models.InputFileString{
-	//							Data: update.Message.Sticker.FileID,
-	//						},
-	//					})
-	//				}
-	//				if update.Message.Photo != nil {
-	//					b.SendPhoto(ctx, &bot.SendPhotoParams{
-	//						ChatID: os.Getenv("CHAT_ID"),
-	//						Photo: &models.InputFileString{
-	//							Data: update.Message.Photo[0].FileID,
-	//						},
-	//					})
-	//				}
-	//			}
-	//		}
-	//	}
+	if update.Message != nil {
+		if slices.Contains(ids, update.Message.From.ID) && update.Message.Chat.ID != chatID {
+			if update.Message.Text != "" {
+				b.SendMessage(ctx, &bot.SendMessageParams{
+					ChatID: os.Getenv("CHAT_ID"),
+					Text:   update.Message.Text,
+				})
+			}
+			if update.Message.Sticker != nil {
+				b.SendSticker(ctx, &bot.SendStickerParams{
+					ChatID: os.Getenv("CHAT_ID"),
+					Sticker: &models.InputFileString{
+						Data: update.Message.Sticker.FileID,
+					},
+				})
+			}
+			if update.Message.Photo != nil {
+				b.SendPhoto(ctx, &bot.SendPhotoParams{
+					ChatID: os.Getenv("CHAT_ID"),
+					Photo: &models.InputFileString{
+						Data: update.Message.Photo[0].FileID,
+					},
+				})
+			}
+		}
+	}
 }
 
 func handlePollAnswer(update *models.Update, chatID int64) {
