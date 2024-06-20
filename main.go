@@ -499,7 +499,7 @@ func orderHandler(ctx context.Context, b *bot.Bot, update *models.Update) {
 func isAllowedTime() bool {
 	now := time.Now()
 	start := time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, now.Location())
-	end := time.Date(now.Year(), now.Month(), now.Day(), 19, 30, 0, 0, now.Location())
+	end := time.Date(now.Year(), now.Month(), now.Day(), 10, 30, 0, 0, now.Location())
 	return now.After(start) && now.Before(end)
 }
 
